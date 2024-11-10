@@ -5,12 +5,17 @@ A bare minimum terminal text editor. (Severely incomplete)
 ## Features
 
 - `Ctrl + q` : Quit
-- `Ctrl + s` : Save (Only works if a file name was provided as a commandline argument)
 
 ## Missing Features
 
-- Scrolling
+- Status Line
+- Editing
 - ...
+
+## Known Bugs
+
+- Sometimes, when pressing up arrow, the cursor will randomly get stuck, and will not go futher up until you press left or right.
+- The x, y calculation is messed up for non-zero start position for buffers
 
 ## Notice
 
