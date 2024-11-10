@@ -1,11 +1,9 @@
 mod buffer;
 mod display;
+mod status_line;
 
 use std::{
-    env::args,
-    io::{self, stdout},
-    panic,
-    process::exit,
+    env::args, io::{self, stdout}, panic, process::exit
 };
 
 use buffer::Buffer;
@@ -14,6 +12,7 @@ use crossterm::{
     event::{read, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
 };
 use display::Display;
+use status_line::StatusLine;
 
 fn main() {
     panic::set_hook(Box::new(|panic_info| {
@@ -40,15 +39,21 @@ fn run() -> io::Result<()> {
         exit(1);
     }
 
-    let mut buffer = if args.len() == 1 {
-        Buffer::new()
-    } else {
-        Buffer::from_file(&args[1])
-    };
-
     let mut display = Display::new(stdout())?;
     display.set_cursor_style(SetCursorStyle::BlinkingBar)?;
+    
+    let mut buffer = if args.len() == 1 {
+        Buffer::new(0, 0, display.width as usize, display.height as usize - 1)
+    } else {
+        Buffer::from_file(&args[1], 0, 0, display.width as usize, display.height as usize - 1)
+    };
 
+    let status_line = if args.len() == 1 {
+        StatusLine::new(0, display.height, display.width as usize, 1, "NO NAME")
+    } else {
+        StatusLine::new(0, display.height, display.width as usize, 1, &args[1])
+    };
+    
     loop {
         display.clear_all()?;
         display.begin_draw()?;
@@ -60,7 +65,10 @@ fn run() -> io::Result<()> {
                     modifiers: KeyModifiers::CONTROL,
                     ..
                 }) => break,
-                Event::Resize(w, h) => display.resize(w, h)?,
+                Event::Resize(w, h) => {
+                    display.resize(w, h);
+                    buffer.resize(w as usize, h as usize - 1);
+                }
 
                 Event::Key(KeyEvent {
                     code: KeyCode::Left,
@@ -69,7 +77,7 @@ fn run() -> io::Result<()> {
                     ..
                 }) => {
                     buffer.move_cursor_left(1);
-                    buffer.scroll()?;
+                    buffer.scroll();
                 }
                 Event::Key(KeyEvent {
                     code: KeyCode::Right,
@@ -78,7 +86,7 @@ fn run() -> io::Result<()> {
                     ..
                 }) => {
                     buffer.move_cursor_right(1);
-                    buffer.scroll()?;
+                    buffer.scroll();
                 }
                 Event::Key(KeyEvent {
                     code: KeyCode::Up,
@@ -87,7 +95,7 @@ fn run() -> io::Result<()> {
                     ..
                 }) => {
                     buffer.move_cursor_up(1);
-                    buffer.scroll()?;
+                    buffer.scroll();
                 }
                 Event::Key(KeyEvent {
                     code: KeyCode::Down,
@@ -96,7 +104,7 @@ fn run() -> io::Result<()> {
                     ..
                 }) => {
                     buffer.move_cursor_down(1);
-                    buffer.scroll()?;
+                    buffer.scroll();
                 }
 
                 _ => (),
@@ -114,7 +122,8 @@ fn run() -> io::Result<()> {
         // display.move_cursor_to(30, 0)?;
         // display.print(format!(" Cursor {:?} | Terminal {:?} | Y Off {}", buffer.cursor_xy(), terminal::size()?, buffer.offset_y))?;
         
-        display.draw_buffer(&buffer)?;
+        display.draw_status_line(&status_line)?;
+        display.draw_buffer(&buffer)?; // Make sure to draw the active buffer the last to get the correct cursor position
 
         display.end_draw()?;
     }
