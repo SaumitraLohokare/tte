@@ -2,21 +2,19 @@
 
 A bare minimum terminal text editor. (Severely incomplete)
 
-## Features
+> [!WARNING]
+> This project is intended as a learning experience for building a text editor. It is not designed to be a fully-featured or production-ready tool, and is not recommended for use as your primary text editor. Feature development will be limited and may not be completed.
+
+## Keybinds
 
 - `Ctrl + q` : Quit
 
 ## Missing Features
 
-- Status Line
+- Better status line
 - Editing
 - ...
 
 ## Known Bugs
 
-- Sometimes, when pressing up arrow, the cursor will randomly get stuck, and will not go futher up until you press left or right.
-- The x, y calculation is messed up for non-zero start position for buffers
-
-## Notice
-
-This is an educational project for me to learn how to build a text editor. This is not meant to be used as your main text editor. I will probably not make this feature complete.
+- ?
