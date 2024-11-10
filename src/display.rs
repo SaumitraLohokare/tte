@@ -99,10 +99,10 @@ impl<W: Write> Display<W> {
 
         let (cursor_x, cursor_y) = buffer.cursor_xy();
 
-        if cursor_x >= 0
-            && cursor_x < buffer.width as isize
-            && cursor_y >= 0
-            && cursor_y < buffer.height as isize
+        if cursor_x >= buffer.x as isize
+            && cursor_x < buffer.x as isize + buffer.width as isize
+            && cursor_y >= buffer.y as isize
+            && cursor_y < buffer.y as isize + buffer.height as isize
         {
             queue!(self.out, MoveTo(cursor_x as u16, cursor_y as u16), Show,)?;
         }

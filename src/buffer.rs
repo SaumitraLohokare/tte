@@ -219,6 +219,9 @@ impl Buffer {
         let (x, y) = self.cursor_xy();
         let (w, h) = (self.width, self.height);
 
+        let y = y - self.y as isize;
+        let x = x - self.x as isize;
+
         if y < 0 {
             let dy = (-y) as usize;
             assert!(self.offset_y >= dy);
