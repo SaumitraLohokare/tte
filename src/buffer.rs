@@ -183,7 +183,7 @@ impl Buffer {
 
             let line = &self.lines[current_line];
 
-            if x_offset > line.len() {
+            if x_offset >= line.len() {
                 self.previous_offset = Some(x_offset);
                 x_offset = line.len() - 1;
             }
@@ -206,7 +206,7 @@ impl Buffer {
 
             let line = &self.lines[current_line];
 
-            if x_offset > line.len() {
+            if x_offset >= line.len() {
                 self.previous_offset = Some(x_offset);
                 x_offset = line.len() - 1;
             }
@@ -221,6 +221,7 @@ impl Buffer {
 
         if y < 0 {
             let dy = (-y) as usize;
+            assert!(self.offset_y >= dy);
             self.offset_y -= dy;    // NOTE: This could lead to overflow
         } else if y >= h as isize {
             let dy = y - h as isize + 1;
