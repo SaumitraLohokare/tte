@@ -7,18 +7,18 @@ use std::{
 use crossterm::{
     cursor::{Hide, MoveTo, SetCursorStyle, Show},
     execute, queue,
-    style::{Print, ResetColor},
+    style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor},
     terminal::{
         self, disable_raw_mode, enable_raw_mode, Clear, DisableLineWrap, EnableLineWrap,
         EnterAlternateScreen, LeaveAlternateScreen,
     },
 };
 
-use crate::buffer::{Buffer, Line};
+use crate::{buffer::{Buffer, Line}, status_line::StatusLine};
 
 pub struct Display<W: Write> {
-    width: u16,
-    height: u16,
+    pub width: u16,
+    pub height: u16,
     out: W,
 }
 
@@ -39,10 +39,9 @@ impl<W: Write> Display<W> {
         Ok(display)
     }
 
-    pub fn resize(&mut self, w: u16, h: u16) -> io::Result<()> {
+    pub fn resize(&mut self, w: u16, h: u16) {
         self.width = w;
         self.height = h;
-        Ok(())
     }
 
     pub fn flush(&mut self) -> io::Result<()> {
@@ -75,8 +74,8 @@ impl<W: Write> Display<W> {
     }
 
     pub fn draw_buffer(&mut self, buffer: &Buffer) -> io::Result<()> {
-        let mut display_buffer = String::with_capacity(self.width as usize);
-        let mut row_idx = 0;
+        let mut display_buffer = String::with_capacity(buffer.width);
+        let mut row_idx = buffer.y;
 
         queue!(self.out, Hide)?;
 
@@ -84,16 +83,16 @@ impl<W: Write> Display<W> {
             .lines
             .iter()
             .skip(buffer.offset_y)
-            .take(self.height as usize)
+            .take(buffer.height)
         {
             if let Some(data) = buffer.data.get(*start..=*end) {
                 display_buffer.clear();
-                for ch in data.iter().skip(buffer.offset_x).take(self.width as usize) {
+                for ch in data.iter().skip(buffer.offset_x).take(buffer.width) {
                     if *ch != '\n' {
                         display_buffer.push(*ch);
                     }
                 }
-                queue!(self.out, MoveTo(0, row_idx), Print(&display_buffer))?;
+                queue!(self.out, MoveTo(buffer.x, row_idx), Print(&display_buffer))?;
                 row_idx += 1;
             }
         }
@@ -101,14 +100,25 @@ impl<W: Write> Display<W> {
         let (cursor_x, cursor_y) = buffer.cursor_xy();
 
         if cursor_x >= 0
-            && cursor_x < self.width as isize
+            && cursor_x < buffer.width as isize
             && cursor_y >= 0
-            && cursor_y < self.height as isize
+            && cursor_y < buffer.height as isize
         {
             queue!(self.out, MoveTo(cursor_x as u16, cursor_y as u16), Show,)?;
         }
 
         Ok(())
+    }
+
+    pub fn draw_status_line(&mut self, status_line: &StatusLine) -> io::Result<()> {
+        let bg_color = Color::Rgb { r: 0xFF, g: 0xFF, b: 0xFF };
+        let fg_color = Color::Rgb { r: 0, g: 0, b: 0 };
+
+        queue!(self.out, SetBackgroundColor(bg_color), SetForegroundColor(fg_color),)?;
+        
+        let line = status_line.get_text();
+
+        queue!(self.out, MoveTo(status_line.x, status_line.y), Print(line), ResetColor)
     }
 }
 
@@ -119,7 +129,7 @@ impl<W: Write> Drop for Display<W> {
             exit(1);
         }
 
-        if let Err(e) = execute!(self.out, ResetColor, LeaveAlternateScreen, EnableLineWrap) {
+        if let Err(e) = execute!(self.out, ResetColor, LeaveAlternateScreen, EnableLineWrap, SetCursorStyle::BlinkingBlock) {
             eprintln!("ERROR : Failed to leave alternate screen : {e}");
             exit(1);
         }

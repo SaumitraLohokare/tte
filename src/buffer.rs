@@ -1,7 +1,5 @@
 #![allow(dead_code)]
-use std::{fs, io};
-
-use crossterm::terminal;
+use std::fs;
 
 /// Representation of a line of text.
 /// `start` and `end` are inclusive, i.e., `end` will usually point to `\n` unless it the line does not end
@@ -21,6 +19,14 @@ pub struct Buffer {
     pub data: Vec<char>,
     /// Indexes into the lines in the buffer
     pub lines: Vec<Line>,
+    /// The x position of the top left corner
+    pub x: u16,
+    /// The y position of the top left corner
+    pub y: u16,
+    /// The width of the buffer
+    pub width: usize,
+    /// The height of the buffer
+    pub height: usize,
     /// Line offset while printing to `Display`
     pub offset_y: usize,
     /// Character offset while printing to `Display`
@@ -33,10 +39,14 @@ pub struct Buffer {
 
 impl Buffer {
     /// Returns a new empty `Buffer`
-    pub fn new() -> Self {
+    pub fn new(x: u16, y: u16, width: usize, height: usize) -> Self {
         let mut buffer = Self {
             data: vec![],
             lines: vec![],
+            x,
+            y,
+            width,
+            height,
             offset_y: 0,
             offset_x: 0,
             cursor_pos: 0,
@@ -53,7 +63,7 @@ impl Buffer {
     ///
     /// **NOTE:**
     /// For now we replace CRLF to LF
-    pub fn from_file(filename: &str) -> Self {
+    pub fn from_file(filename: &str, x: u16, y: u16, width: usize, height: usize) -> Self {
         let data = match fs::read(&filename) {
             Ok(bytes) => bytes
                 .into_iter()
@@ -66,6 +76,10 @@ impl Buffer {
         let mut buffer = Self {
             data,
             lines: vec![],
+            x,
+            y,
+            width,
+            height,
             offset_y: 0,
             offset_x: 0,
             cursor_pos: 0,
@@ -74,6 +88,16 @@ impl Buffer {
         buffer.recalculate_lines();
 
         buffer
+    }
+
+    pub fn move_to(&mut self, x: u16, y: u16) {
+        self.x = x;
+        self.y = y;
+    }
+
+    pub fn resize(&mut self, w: usize, h: usize) {
+        self.width = w;
+        self.height = h;
     }
 
     pub fn recalculate_lines(&mut self) {
@@ -112,7 +136,7 @@ impl Buffer {
             }
         }
 
-        (x, y - self.offset_y as isize)
+        (x + self.x as isize, y - self.offset_y as isize + self.y as isize)
     }
 
     pub fn current_line(&self) -> usize {
@@ -191,9 +215,9 @@ impl Buffer {
         }
     }
 
-    pub fn scroll(&mut self) -> io::Result<()> {
+    pub fn scroll(&mut self) {
         let (x, y) = self.cursor_xy();
-        let (w, h) = terminal::size()?;
+        let (w, h) = (self.width, self.height);
 
         if y < 0 {
             let dy = (-y) as usize;
@@ -210,7 +234,5 @@ impl Buffer {
             let dx = x - w as isize + 1;
             self.offset_x += dx as usize;
         }
-
-        Ok(())
     }
 }
