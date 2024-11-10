@@ -9,11 +9,12 @@ A bare minimum terminal text editor. (Severely incomplete)
 
 - `Ctrl + q` : Quit
 
-## Missing Features
+## Roadmap
 
-- Better status line
-- Editing
-- ...
+- [ ] Better Status Line
+- [ ] Support for simple editing
+- [ ] Support for Saving (Save/Save As)
+- [ ] More stuff
 
 ## Known Bugs
 
