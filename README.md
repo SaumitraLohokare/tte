@@ -8,12 +8,16 @@ A bare minimum terminal text editor. (Severely incomplete)
 ## Keybinds
 
 - `Ctrl + q` : Quit
+- `Ctrl + s` : Save
 
 ## Roadmap
 
+- [x] Support for simple editing
+- [x] Support for Saving (Save)
 - [ ] Better Status Line
-- [ ] Support for simple editing
-- [ ] Support for Saving (Save/Save As)
+- [ ] Support for Save As (Ctrl + Shift + s)
+- [ ] Good Theming Support
+- [ ] Syntax Highlighting
 - [ ] More stuff
 
 ## Known Bugs

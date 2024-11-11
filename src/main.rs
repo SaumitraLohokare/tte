@@ -1,9 +1,13 @@
 mod buffer;
 mod display;
 mod status_line;
+mod util;
 
 use std::{
-    env::args, io::{self, stdout}, panic, process::exit
+    env::args,
+    io::{self, stdout},
+    panic,
+    process::exit,
 };
 
 use buffer::Buffer;
@@ -41,21 +45,38 @@ fn run() -> io::Result<()> {
 
     let mut display = Display::new(stdout())?;
     display.set_cursor_style(SetCursorStyle::BlinkingBar)?;
-    
+
     let mut buffer = if args.len() == 1 {
         Buffer::new(0, 0, display.width as usize, display.height as usize - 1)
     } else {
-        Buffer::from_file(&args[1], 0, 0, display.width as usize, display.height as usize - 1)
+        Buffer::from_file(
+            &args[1],
+            0,
+            0,
+            display.width as usize,
+            display.height as usize - 1,
+        )
     };
 
-    let status_line = if args.len() == 1 {
-        StatusLine::new(0, display.height, display.width as usize, 1, "NO NAME")
+    let mut status_line = if args.len() == 1 {
+        StatusLine::new(
+            0,
+            display.height,
+            display.width as usize,
+            1,
+            &buffer.file_name(),
+        )
     } else {
-        StatusLine::new(0, display.height, display.width as usize, 1, &args[1])
+        StatusLine::new(
+            0,
+            display.height,
+            display.width as usize,
+            1,
+            &buffer.file_name(),
+        )
     };
-    
+
     loop {
-        display.clear_all()?;
         display.begin_draw()?;
 
         if let Ok(event) = read() {
@@ -65,9 +86,17 @@ fn run() -> io::Result<()> {
                     modifiers: KeyModifiers::CONTROL,
                     ..
                 }) => break,
+                Event::Key(KeyEvent {
+                    code: KeyCode::Char('s'),
+                    modifiers: KeyModifiers::CONTROL,
+                    ..
+                }) => buffer.save(),
                 Event::Resize(w, h) => {
                     display.resize(w, h);
+                    // Be sure to resize the buffer correctly or the rendering will messup.
                     buffer.resize(w as usize, h as usize - 1);
+                    status_line.resize(w as usize, 1);
+                    status_line.move_to(0, h - 1);
                 }
 
                 Event::Key(KeyEvent {
@@ -107,10 +136,51 @@ fn run() -> io::Result<()> {
                     buffer.scroll();
                 }
 
+                Event::Key(KeyEvent {
+                    code: KeyCode::Char(c),
+                    modifiers: KeyModifiers::NONE,
+                    kind: KeyEventKind::Press,
+                    ..
+                }) => {
+                    buffer.insert_ch(c);
+                }
+                Event::Key(KeyEvent {
+                    code: KeyCode::Char(c),
+                    modifiers: KeyModifiers::SHIFT,
+                    kind: KeyEventKind::Press,
+                    ..
+                }) => {
+                    buffer.insert_ch(c.to_ascii_uppercase());
+                }
+                Event::Key(KeyEvent {
+                    code: KeyCode::Enter,
+                    modifiers: KeyModifiers::NONE,
+                    kind: KeyEventKind::Press,
+                    ..
+                }) => {
+                    buffer.insert_ch('\n');
+                }
+                Event::Key(KeyEvent {
+                    code: KeyCode::Backspace,
+                    modifiers: KeyModifiers::NONE,
+                    kind: KeyEventKind::Press,
+                    ..
+                }) => {
+                    buffer.backspace();
+                }
+                Event::Key(KeyEvent {
+                    code: KeyCode::Delete,
+                    modifiers: KeyModifiers::NONE,
+                    kind: KeyEventKind::Press,
+                    ..
+                }) => {
+                    buffer.delete();
+                }
+
                 _ => (),
             }
         }
-        
+
         // DEBUGGING STUFF
         // display.print(format!("{event:?}"))?;
 
@@ -118,11 +188,13 @@ fn run() -> io::Result<()> {
         // display.print(format!("{} ({:?}) -> {:?}", buffer.cursor_pos, buffer.data[buffer.cursor_pos], buffer.cursor_xy()))?;
         // display.move_cursor_to(30, 1)?;
         // display.print(format!("({}, {})", buffer.lines[0].start, buffer.lines[0].end))?;
-        
+
         // display.move_cursor_to(30, 0)?;
         // display.print(format!(" Cursor {:?} | Terminal {:?} | Y Off {}", buffer.cursor_xy(), terminal::size()?, buffer.offset_y))?;
-        
+
         display.draw_status_line(&status_line)?;
+
+        buffer.recalculate_lines();
         display.draw_buffer(&buffer)?; // Make sure to draw the active buffer the last to get the correct cursor position
 
         display.end_draw()?;
